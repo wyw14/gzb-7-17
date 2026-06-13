@@ -75,6 +75,36 @@
             <span class="form-tip">元/天</span>
           </el-form-item>
           
+          <el-divider content-position="left">出借规则</el-divider>
+          
+          <el-form-item label="使用模板">
+            <el-select v-model="selectedTemplateId" placeholder="选择出借规则模板（可选）" style="width: 300px" @change="applyTemplate">
+              <el-option v-for="tpl in templates" :key="tpl.id" :label="tpl.name" :value="tpl.id" />
+            </el-select>
+            <span class="form-tip">选择模板可快速填充出借规则</span>
+          </el-form-item>
+          
+          <el-form-item label="押金说明">
+            <el-input v-model="form.depositNote" type="textarea" :rows="2" placeholder="押金退还条件、时间等说明" style="max-width: 500px" />
+          </el-form-item>
+          
+          <el-form-item label="最短借用天数">
+            <el-input-number v-model="form.minDays" :min="1" :max="365" />
+            <span class="form-tip">天</span>
+          </el-form-item>
+          
+          <el-form-item label="交接方式">
+            <el-input v-model="form.handoverMethod" type="textarea" :rows="2" placeholder="如何交接乐器，是否需要证件等" style="max-width: 500px" />
+          </el-form-item>
+          
+          <el-form-item label="损坏赔偿">
+            <el-input v-model="form.damageCompensation" type="textarea" :rows="2" placeholder="损坏后的赔偿标准" style="max-width: 500px" />
+          </el-form-item>
+          
+          <el-form-item label="归还要求">
+            <el-input v-model="form.returnRequirement" type="textarea" :rows="2" placeholder="归还时的要求，逾期费用等" style="max-width: 500px" />
+          </el-form-item>
+          
           <el-divider content-position="left">地点与时间</el-divider>
           
           <el-form-item label="所在位置" prop="location">
@@ -109,10 +139,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import { instrumentApi } from '../api'
+import { instrumentApi, borrowTemplateApi } from '../api'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@element-plus/icons-vue'
 
@@ -121,6 +151,8 @@ const userStore = useUserStore()
 
 const formRef = ref(null)
 const submitting = ref(false)
+const templates = ref([])
+const selectedTemplateId = ref('')
 
 const categories = ['古典吉他', '尤克里里', '小提琴', '钢琴', '电子琴', '架子鼓', '竹笛', '洞箫', '陶埙', '卡洪鼓', '萨克斯', '长笛', '口琴', '古筝', '二胡', '琵琶', '其他']
 
@@ -137,6 +169,11 @@ const form = reactive({
   value: 1000,
   deposit: 300,
   dailyFee: 20,
+  depositNote: '',
+  minDays: 1,
+  handoverMethod: '',
+  damageCompensation: '',
+  returnRequirement: '',
   location: '',
   latitude: 39.9042,
   longitude: 116.4074,
@@ -153,6 +190,24 @@ const rules = {
   dailyFee: [{ required: true, message: '请设置日租金', trigger: 'blur' }],
   location: [{ required: true, message: '请填写位置', trigger: 'blur' }],
   availableTimes: [{ required: true, message: '请选择可借时间', trigger: 'change', type: 'array' }]
+}
+
+onMounted(async () => {
+  try {
+    templates.value = await borrowTemplateApi.list({ ownerId: userStore.userId })
+  } catch (e) {}
+})
+
+const applyTemplate = (templateId) => {
+  const template = templates.value.find(t => t.id === templateId)
+  if (template) {
+    if (template.depositNote !== undefined) form.depositNote = template.depositNote
+    if (template.minDays !== undefined) form.minDays = template.minDays
+    if (template.handoverMethod !== undefined) form.handoverMethod = template.handoverMethod
+    if (template.damageCompensation !== undefined) form.damageCompensation = template.damageCompensation
+    if (template.returnRequirement !== undefined) form.returnRequirement = template.returnRequirement
+    ElMessage.success('已应用模板')
+  }
 }
 
 const submit = async () => {

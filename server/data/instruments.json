@@ -18,6 +18,11 @@
     "longitude": 116.3074,
     "availableTimes": ["周一至周五晚", "周末全天"],
     "status": "available",
+    "depositNote": "押金在归还乐器并确认无损坏后全额退还，退还时间为归还后3个工作日内",
+    "minDays": 3,
+    "handoverMethod": "线下当面交接，需出示有效身份证件，交接时双方共同查验乐器状态",
+    "damageCompensation": "轻微划痕按维修成本价赔偿，严重损坏按乐器价值80%赔偿，丢失按全额赔偿",
+    "returnRequirement": "请在借用到期日前归还，逾期每天按日租金的1.5倍收取费用，归还时需保持乐器清洁",
     "createdAt": "2026-01-10T10:00:00.000Z"
   },
   {

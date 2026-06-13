@@ -65,6 +65,32 @@
             </div>
           </div>
           
+          <div class="borrow-rules-card card mb-20" v-if="hasBorrowRules">
+            <h3><el-icon><Tickets /></el-icon> 出借规则</h3>
+            <div class="rule-list">
+              <div class="rule-item" v-if="instrument.depositNote">
+                <span class="rule-label">押金说明</span>
+                <span class="rule-content">{{ instrument.depositNote }}</span>
+              </div>
+              <div class="rule-item" v-if="instrument.minDays">
+                <span class="rule-label">最短借用</span>
+                <span class="rule-content">{{ instrument.minDays }} 天</span>
+              </div>
+              <div class="rule-item" v-if="instrument.handoverMethod">
+                <span class="rule-label">交接方式</span>
+                <span class="rule-content">{{ instrument.handoverMethod }}</span>
+              </div>
+              <div class="rule-item" v-if="instrument.damageCompensation">
+                <span class="rule-label">损坏赔偿</span>
+                <span class="rule-content">{{ instrument.damageCompensation }}</span>
+              </div>
+              <div class="rule-item" v-if="instrument.returnRequirement">
+                <span class="rule-label">归还要求</span>
+                <span class="rule-content">{{ instrument.returnRequirement }}</span>
+              </div>
+            </div>
+          </div>
+          
           <div class="owner-card card" v-if="instrument.owner">
             <h3><el-icon><User /></el-icon> 乐器主人</h3>
             <div class="owner-row">
@@ -176,7 +202,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { instrumentApi, borrowApi, invitationApi, reviewApi } from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Goods, Medal, Location, Wallet, ChatDotRound, Document, User, Star, ChatLineSquare } from '@element-plus/icons-vue'
+import { Goods, Medal, Location, Wallet, ChatDotRound, Document, User, Star, ChatLineSquare, Tickets } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -203,6 +229,15 @@ const inviteForm = reactive({
 })
 
 const isOwner = computed(() => userStore.userId === instrument.value?.ownerId)
+
+const hasBorrowRules = computed(() => {
+  if (!instrument.value) return false
+  return !!(instrument.value.depositNote || 
+    instrument.value.minDays || 
+    instrument.value.handoverMethod || 
+    instrument.value.damageCompensation || 
+    instrument.value.returnRequirement)
+})
 
 const estimatedFee = computed(() => {
   if (!borrowForm.dates || !instrument.value) return 0
@@ -433,6 +468,41 @@ const submitInvite = async () => {
 .tag-time {
   background: #ecfeff;
   color: #0e7490;
+}
+
+.borrow-rules-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  margin-bottom: 14px;
+}
+
+.rule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rule-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-light);
+  border-radius: 8px;
+}
+
+.rule-label {
+  min-width: 90px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.rule-content {
+  flex: 1;
+  color: var(--text-primary);
+  line-height: 1.6;
 }
 
 .owner-row {

@@ -68,4 +68,12 @@ export const recommendApi = {
   pieces: (userId) => api.get(`/recommendations/pieces/${userId}`)
 }
 
+export const borrowTemplateApi = {
+  list: (params) => api.get('/borrow-templates', { params }),
+  get: (id) => api.get(`/borrow-templates/${id}`),
+  create: (data) => api.post('/borrow-templates', data),
+  update: (id, data) => api.put(`/borrow-templates/${id}`, data),
+  remove: (id) => api.delete(`/borrow-templates/${id}`)
+}
+
 export default api

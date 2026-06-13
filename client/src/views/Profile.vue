@@ -170,7 +170,97 @@
             <p>暂无评价</p>
           </div>
         </el-tab-pane>
+        
+        <el-tab-pane label="出借规则模板" name="templates">
+          <div class="action-bar mb-20">
+            <el-button type="primary" size="large" @click="openTemplateDialog()">
+              <el-icon><Plus /></el-icon>
+              新建模板
+            </el-button>
+            <span class="tip-text">创建出借规则模板，发布乐器时可直接套用</span>
+          </div>
+          
+          <div v-if="templates.length" class="template-list">
+            <div class="template-card card" v-for="tpl in templates" :key="tpl.id">
+              <div class="template-header">
+                <h4>{{ tpl.name }}</h4>
+                <div class="template-actions">
+                  <el-button size="small" @click="openTemplateDialog(tpl)">
+                    <el-icon><Edit /></el-icon>
+                    编辑
+                  </el-button>
+                  <el-button size="small" type="danger" @click="deleteTemplate(tpl)">
+                    <el-icon><Delete /></el-icon>
+                    删除
+                  </el-button>
+                </div>
+              </div>
+              
+              <div class="template-body">
+                <div class="template-item">
+                  <span class="label">押金说明</span>
+                  <span class="value">{{ tpl.depositNote || '未设置' }}</span>
+                </div>
+                <div class="template-item">
+                  <span class="label">最短借用天数</span>
+                  <span class="value">{{ tpl.minDays ? tpl.minDays + ' 天' : '未设置' }}</span>
+                </div>
+                <div class="template-item">
+                  <span class="label">交接方式</span>
+                  <span class="value">{{ tpl.handoverMethod || '未设置' }}</span>
+                </div>
+                <div class="template-item">
+                  <span class="label">损坏赔偿</span>
+                  <span class="value">{{ tpl.damageCompensation || '未设置' }}</span>
+                </div>
+                <div class="template-item">
+                  <span class="label">归还要求</span>
+                  <span class="value">{{ tpl.returnRequirement || '未设置' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-else class="empty-state">
+            <el-icon><Document /></el-icon>
+            <p>还没有出借规则模板</p>
+            <el-button type="primary" @click="openTemplateDialog()">创建第一个模板</el-button>
+          </div>
+        </el-tab-pane>
       </el-tabs>
+      
+      <el-dialog v-model="templateDialogVisible" :title="editingTemplate ? '编辑模板' : '新建模板'" width="600px">
+        <el-form ref="templateFormRef" :model="templateForm" :rules="templateRules" label-width="120px">
+          <el-form-item label="模板名称" prop="name">
+            <el-input v-model="templateForm.name" placeholder="给模板起个名字，如：标准出借规则" />
+          </el-form-item>
+          
+          <el-form-item label="押金说明" prop="depositNote">
+            <el-input v-model="templateForm.depositNote" type="textarea" :rows="2" placeholder="押金退还条件、时间等说明" />
+          </el-form-item>
+          
+          <el-form-item label="最短借用天数" prop="minDays">
+            <el-input-number v-model="templateForm.minDays" :min="1" :max="365" />
+            <span class="form-tip">天，0表示不限制</span>
+          </el-form-item>
+          
+          <el-form-item label="交接方式" prop="handoverMethod">
+            <el-input v-model="templateForm.handoverMethod" type="textarea" :rows="2" placeholder="如何交接乐器，是否需要证件等" />
+          </el-form-item>
+          
+          <el-form-item label="损坏赔偿" prop="damageCompensation">
+            <el-input v-model="templateForm.damageCompensation" type="textarea" :rows="2" placeholder="损坏后的赔偿标准" />
+          </el-form-item>
+          
+          <el-form-item label="归还要求" prop="returnRequirement">
+            <el-input v-model="templateForm.returnRequirement" type="textarea" :rows="2" placeholder="归还时的要求，逾期费用等" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="templateDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="templateSaving" @click="saveTemplate">保存</el-button>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -179,9 +269,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import { checkinApi, instrumentApi, reviewApi } from '../api'
+import { checkinApi, instrumentApi, reviewApi, borrowTemplateApi } from '../api'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Plus, Goods, ChatLineSquare } from '@element-plus/icons-vue'
+import { Check, Plus, Goods, ChatLineSquare, Edit, Delete, Document } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -191,6 +281,24 @@ const saving = ref(false)
 const stats = ref(null)
 const myInstruments = ref([])
 const myReviews = ref([])
+const templates = ref([])
+const templateDialogVisible = ref(false)
+const templateSaving = ref(false)
+const editingTemplate = ref(null)
+const templateFormRef = ref(null)
+
+const templateForm = reactive({
+  name: '',
+  depositNote: '',
+  minDays: 1,
+  handoverMethod: '',
+  damageCompensation: '',
+  returnRequirement: ''
+})
+
+const templateRules = {
+  name: [{ required: true, message: '请输入模板名称', trigger: 'blur' }]
+}
 
 const form = reactive({
   ...(userStore.currentUser || {}),
@@ -214,6 +322,9 @@ onMounted(async () => {
   } catch (e) {}
   try {
     myReviews.value = await reviewApi.list({ revieweeId: userStore.userId })
+  } catch (e) {}
+  try {
+    templates.value = await borrowTemplateApi.list({ ownerId: userStore.userId })
   } catch (e) {}
 })
 
@@ -248,6 +359,70 @@ const deleteInstrument = async (inst) => {
     await instrumentApi.remove(inst.id)
     ElMessage.success('已下架')
     myInstruments.value = myInstruments.value.filter(i => i.id !== inst.id)
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
+const loadTemplates = async () => {
+  try {
+    templates.value = await borrowTemplateApi.list({ ownerId: userStore.userId })
+  } catch (e) {
+    ElMessage.error('加载模板失败')
+  }
+}
+
+const openTemplateDialog = (template = null) => {
+  editingTemplate.value = template
+  if (template) {
+    Object.assign(templateForm, template)
+  } else {
+    templateForm.name = ''
+    templateForm.depositNote = ''
+    templateForm.minDays = 1
+    templateForm.handoverMethod = ''
+    templateForm.damageCompensation = ''
+    templateForm.returnRequirement = ''
+  }
+  templateDialogVisible.value = true
+}
+
+const saveTemplate = async () => {
+  try {
+    await templateFormRef.value.validate()
+  } catch {
+    return
+  }
+  templateSaving.value = true
+  try {
+    const data = {
+      ownerId: userStore.userId,
+      ...templateForm
+    }
+    if (editingTemplate.value) {
+      await borrowTemplateApi.update(editingTemplate.value.id, data)
+      ElMessage.success('模板更新成功')
+    } else {
+      await borrowTemplateApi.create(data)
+      ElMessage.success('模板创建成功')
+    }
+    templateDialogVisible.value = false
+    loadTemplates()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  } finally {
+    templateSaving.value = false
+  }
+}
+
+const deleteTemplate = async (tpl) => {
+  try {
+    await ElMessageBox.confirm(`确定删除模板「${tpl.name}」吗？`, '确认删除', { type: 'warning' })
+  } catch { return }
+  try {
+    await borrowTemplateApi.remove(tpl.id)
+    ElMessage.success('已删除')
+    templates.value = templates.value.filter(t => t.id !== tpl.id)
   } catch (e) {
     ElMessage.error('操作失败')
   }
@@ -420,6 +595,72 @@ const deleteInstrument = async (inst) => {
 .time {
   margin-left: auto;
   font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tip-text {
+  margin-left: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.template-card {
+  padding: 20px;
+}
+
+.template-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.template-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.template-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.template-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-item {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.template-item .label {
+  min-width: 100px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.template-item .value {
+  color: var(--text-primary);
+  flex: 1;
+  line-height: 1.6;
+}
+
+.form-tip {
+  margin-left: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
 }
 
